@@ -1,6 +1,5 @@
 use clap::Parser;
-use std::io::Error;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncReadExt, AsyncWriteExt, self};
 use tokio::net::UnixStream;
 
 #[derive(Parser, Default)]
@@ -16,37 +15,39 @@ struct Cli {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Error> {
+async fn main() -> io::Result<()> {
     let args = Cli::parse();
 
     let stream = UnixStream::connect(args.socket).await?;
-    let (mut read, mut write) = stream.into_split();
+    let (mut rd, mut wr) = stream.into_split();
 
-    let reader_handle = tokio::spawn(async move {
+    let rd_handle = tokio::spawn(async move {
         let mut response = [0; 256];
         loop {
-            let n = read.read(&mut response).await.unwrap();
+            let n = rd.read(&mut response).await?;
             if n == 0 {
                 break;
             };
             println!("\n{}", String::from_utf8_lossy(&response[0..n]));
             // println!("{}-{:?}", n, &response[0..n]);
         }
+        Ok::<_, io::Error>(())
     });
 
-    let writer_handle = tokio::spawn(async move {
+    let wr_handle = tokio::spawn(async move {
         if let Some(cmd) = args.command {
             let ttype_command = b"\xff\xfa\x18\x00vppctl\xff\xf0";
-            write.write_all(ttype_command).await.unwrap();
-            write.write_all(cmd.as_bytes()).await.unwrap();
-            return;
+            wr.write_all(ttype_command).await?;
+            wr.write_all(cmd.as_bytes()).await?;
+            return Ok::<_, io::Error>(());
         }
         print_header();
         println!("vppsh# interactive mode not yet implemented 😕");
+        Ok::<_, io::Error>(())
     });
 
-    writer_handle.await?;
-    reader_handle.await?;
+    wr_handle.await??;
+    rd_handle.await??;
     Ok(())
 }
 
