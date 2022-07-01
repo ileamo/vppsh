@@ -1,10 +1,7 @@
 use clap::Parser;
-use std::io::prelude::*;
-use std::time::Duration;
-use std::{
-    io::Write,
-    os::unix::net::{UnixListener, UnixStream},
-};
+use std::io::Error;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::UnixStream;
 
 #[derive(Parser, Default)]
 #[clap(version, about = "VPP shell")]
@@ -18,13 +15,39 @@ struct Cli {
     socket: String,
 }
 
-fn main() {
+#[tokio::main]
+async fn main() -> Result<(), Error> {
     let args = Cli::parse();
 
-    match args.command {
-        Some(cmd) => exec_vpp_command(&args.socket, cmd),
-        None => interactive_mode(&args.socket),
-    };
+    let stream = UnixStream::connect(args.socket).await?;
+    let (mut read, mut write) = stream.into_split();
+
+    let reader_handle = tokio::spawn(async move {
+        let mut response = [0; 256];
+        loop {
+            let n = read.read(&mut response).await.unwrap();
+            if n == 0 {
+                break;
+            };
+            println!("\n{}", String::from_utf8_lossy(&response[0..n]));
+            // println!("{}-{:?}", n, &response[0..n]);
+        }
+    });
+
+    let writer_handle = tokio::spawn(async move {
+        if let Some(cmd) = args.command {
+            let ttype_command = b"\xff\xfa\x18\x00vppctl\xff\xf0";
+            write.write_all(ttype_command).await.unwrap();
+            write.write_all(cmd.as_bytes()).await.unwrap();
+            return;
+        }
+        print_header();
+        println!("vppsh# interactive mode not yet implemented 😕");
+    });
+
+    writer_handle.await?;
+    reader_handle.await?;
+    Ok(())
 }
 
 fn validate_vpp_command(name: &str) -> Result<(), String> {
@@ -33,39 +56,6 @@ fn validate_vpp_command(name: &str) -> Result<(), String> {
     } else {
         Ok(())
     }
-}
-
-fn exec_vpp_command(socket_name: &str, cmd: String) {
-    let mut stream = UnixStream::connect(socket_name).unwrap();
-    stream
-        .set_read_timeout(Some(Duration::new(1, 0)))
-        .expect("Couldn't set read timeout");
-
-    let mut response = [0; 256];
-    loop {
-        let res = stream.read(&mut response);
-        if let Ok(n) = res {
-            println!("{} - {:?}", n, &response[0..n])
-        } else {
-            break
-        }
-    }
-    stream.write_all(cmd.as_bytes()).unwrap();
-    stream.write_all(b"\n").unwrap();
-    loop {
-        let res = stream.read(&mut response);
-        if let Ok(n) = res {
-            println!("{} - {:?}", String::from_utf8_lossy(&response[0..n]), &response[0..n])
-        } else {
-            break
-        }
-    }
-}
-
-fn interactive_mode(socket_name: &str) {
-    print_header();
-    println!("Connect to socket {}", socket_name);
-    println!("vppsh# interactive mode not yet implemented 😕");
 }
 
 fn print_header() {
