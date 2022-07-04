@@ -7,4 +7,13 @@ edition = "2021"
 
 [dependencies]
 clap = { version = "3.0", features = ["derive"] }
+crossterm = { version = "0.24.0", features = ["event-stream"]}
+futures = "0.3.21"
 tokio = { version = "1", features = ["full"] }
+
+[profile.release]
+strip = true  # Automatically strip symbols from the binary.
+opt-level = "z"  # Optimize for size.
+lto = true
+codegen-units = 1
+panic = "abort"
