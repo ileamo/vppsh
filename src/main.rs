@@ -78,6 +78,31 @@ impl VppSh<'_> {
         Ok(())
     }
 
+    async fn sh_handle(&mut self, event: Event) -> io::Result<()> {
+        match event {
+            Event::Key(KeyEvent {
+                code: KeyCode::Char('v'),
+                modifiers: KeyModifiers::CONTROL,
+            }) => {
+                clear_terminal()?;
+                self.term_wr(b"Enter vppctl interactive mode\n\rvpp# ")
+                    .await?;
+                self.vppctl = true;
+            }
+            Event::Key(KeyEvent {
+                code: KeyCode::Char('q'),
+                modifiers: KeyModifiers::CONTROL,
+            }) => {
+                // break;
+            }
+            evt => {
+                println!("vppsh: {:?}\r", evt);
+            }
+        }
+
+        Ok(())
+    }
+
     async fn ctl_handle(&mut self, event: Event) -> io::Result<()> {
         match event {
             Event::Key(KeyEvent {
@@ -85,6 +110,8 @@ impl VppSh<'_> {
                 modifiers: KeyModifiers::NONE,
             }) => {
                 self.vppctl = false;
+                clear_terminal()?;
+                print_header()
             }
             Event::Key(KeyEvent {
                 code: KeyCode::Char(c),
@@ -182,41 +209,30 @@ async fn main() -> io::Result<()> {
                 } else {
 
                 }
-
             }
 
             event_result = vppsh.term_reader.next() =>  {
                 let event = match event_result {
                     None => break,
-                    Some(Err(_)) => break, // IO error on stdin
+                    Some(Err(_)) => break,
                     Some(Ok(event)) => event,
                 };
 
-                if let Event::Resize(_, _) = event {
-                    vppsh.win_resize().await?;
-                } else {
-                    if vppsh.vppctl {
-                        vppsh.ctl_handle(event).await?;
-                    } else {
-                        match event {
-                            Event::Key(KeyEvent{code: KeyCode::Char('v'),modifiers: KeyModifiers::CONTROL }) => {
-                                execute!(std::io::stdout(), terminal::Clear(terminal::ClearType::All))?;
-                                execute!(std::io::stdout(), cursor::MoveTo(0, 0))?;
-                                vppsh.term_wr(b"Enter vppctl interactive mode\n\rvpp# ").await?;
-                                vppsh.vppctl = true;
-
-                            }
-                            Event::Key(KeyEvent{code: KeyCode::Char('q'),modifiers: KeyModifiers::CONTROL }) => {
-                                break;
-                            }
-                            evt => {println!("vppsh: {:?}\r", evt);}
+                match event {
+                    Event::Resize(_, _) => {
+                        vppsh.win_resize().await?;
+                    }
+                    event => {
+                        if vppsh.vppctl {
+                            vppsh.ctl_handle(event).await?;
+                        } else {
+                            vppsh.sh_handle(event).await?;
                         }
                     }
                 }
             }
-        };
+        }
     }
-
     Ok(())
 }
 
@@ -229,13 +245,19 @@ fn validate_vpp_command(name: &str) -> Result<(), String> {
 }
 
 fn print_header() {
-    let header = r#"                            .__
- ___  ________ ______  _____|  |__
- \  \/ /\____ \\____ \/  ___/  |  \
-  \   / |  |_> >  |_> >___ \|   Y  \
-   \_/  |   __/|   __/____  >___|  /
-        |__|   |__|       \/     \/
-"#;
+    let header = "                            .__\r
+ ___  ________ ______  _____|  |__\r
+ \\  \\/ /\\____ \\\\____ \\/  ___/  |  \\\r
+  \\   / |  |_> >  |_> >___ \\|   Y  \\\r
+   \\_/  |   __/|   __/____  >___|  /\r
+        |__|   |__|       \\/     \\/\r
+";
 
     println!("{}", header);
+}
+
+fn clear_terminal() -> io::Result<()> {
+    execute!(std::io::stdout(), terminal::Clear(terminal::ClearType::All))?;
+    execute!(std::io::stdout(), cursor::MoveTo(0, 0))?;
+    Ok(())
 }
