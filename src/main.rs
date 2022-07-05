@@ -14,6 +14,11 @@ const SE: u8 = 240;
 const TELOPT_TTYPE: u8 = 24;
 const TELOPT_NAWS: u8 = 31;
 
+enum Loop {
+    Continue,
+    Break,
+}
+
 #[derive(Parser, Default)]
 #[clap(version, about = "VPP shell")]
 struct Cli {
@@ -57,6 +62,10 @@ impl VppSh<'_> {
     async fn term_wr_response(&mut self, n: usize) -> io::Result<()> {
         self.stdout.write_all(&self.response[0..n]).await?;
         self.stdout.flush().await?;
+
+        // write!(String::from_utf8_lossy(&response[0..n]));
+        // println!("{}-{:?}", n, &self.response[0..n]);
+
         Ok(())
     }
 
@@ -78,11 +87,11 @@ impl VppSh<'_> {
         Ok(())
     }
 
-    async fn sh_handle(&mut self, event: Event) -> io::Result<()> {
+    async fn sh_handle(&mut self, event: Event) -> io::Result<Loop> {
         match event {
             Event::Key(KeyEvent {
-                code: KeyCode::Char('v'),
-                modifiers: KeyModifiers::CONTROL,
+                code: KeyCode::Char('c'),
+                modifiers: KeyModifiers::NONE,
             }) => {
                 clear_terminal()?;
                 self.term_wr(b"Enter vppctl interactive mode\n\rvpp# ")
@@ -91,16 +100,14 @@ impl VppSh<'_> {
             }
             Event::Key(KeyEvent {
                 code: KeyCode::Char('q'),
-                modifiers: KeyModifiers::CONTROL,
-            }) => {
-                // break;
-            }
+                modifiers: KeyModifiers::NONE,
+            }) => return Ok(Loop::Break),
             evt => {
                 println!("vppsh: {:?}\r", evt);
             }
         }
 
-        Ok(())
+        Ok(Loop::Continue)
     }
 
     async fn ctl_handle(&mut self, event: Event) -> io::Result<()> {
@@ -141,13 +148,19 @@ impl VppSh<'_> {
                 code: KeyCode::Left,
                 modifiers: KeyModifiers::NONE,
             }) => {
-                self.wr.write_all(b"\x10").await?;
+                self.wr.write_all(b"\x02").await?;
             }
             Event::Key(KeyEvent {
                 code: KeyCode::Right,
                 modifiers: KeyModifiers::NONE,
             }) => {
-                self.wr.write_all(b"\x0e").await?;
+                self.wr.write_all(b"\x06").await?;
+            }
+            Event::Key(KeyEvent {
+                code: KeyCode::Backspace,
+                modifiers: KeyModifiers::NONE,
+            }) => {
+                self.wr.write_all(b"\x08").await?;
             }
             Event::Key(KeyEvent {
                 code: KeyCode::Tab,
@@ -204,8 +217,6 @@ async fn main() -> io::Result<()> {
                 };
                 if vppsh.vppctl {
                     vppsh.term_wr_response(n).await?;
-                    // write!(String::from_utf8_lossy(&response[0..n]));
-                    // println!("{}-{:?}", n, &response[0..n]);
                 } else {
 
                 }
@@ -226,7 +237,10 @@ async fn main() -> io::Result<()> {
                         if vppsh.vppctl {
                             vppsh.ctl_handle(event).await?;
                         } else {
-                            vppsh.sh_handle(event).await?;
+                            if let Loop::Break = vppsh.sh_handle(event).await? {
+                                break;
+                            }
+
                         }
                     }
                 }
