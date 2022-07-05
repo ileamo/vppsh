@@ -2,11 +2,11 @@ use std::env;
 
 use clap::Parser;
 use crossterm::event::{Event, EventStream, KeyCode, KeyEvent, KeyModifiers};
-use crossterm::terminal;
+use crossterm::{cursor, execute, terminal};
 use futures::StreamExt;
 use tokio::io::{self, AsyncReadExt, AsyncWriteExt, Stdout};
-use tokio::net::UnixStream;
 use tokio::net::unix::{ReadHalf, WriteHalf};
+use tokio::net::UnixStream;
 
 #[derive(Parser, Default)]
 #[clap(version, about = "VPP shell")]
@@ -40,6 +40,76 @@ impl VppSh<'_> {
         self.wr.write_all(buf).await?;
         Ok(())
     }
+
+    async fn term_wr(&mut self, buf: &[u8]) -> io::Result<()> {
+        self.stdout.write_all(buf).await?;
+        self.stdout.flush().await?;
+        Ok(())
+    }
+
+    async fn term_wr_response(&mut self, n: usize) -> io::Result<()> {
+        self.stdout.write_all(&self.response[0..n]).await?;
+        self.stdout.flush().await?;
+        Ok(())
+    }
+
+    async fn ctl_handle(&mut self, event: Event) -> io::Result<()> {
+        match event {
+            Event::Key(KeyEvent {
+                code: KeyCode::Esc,
+                modifiers: KeyModifiers::NONE,
+            }) => {
+                self.vppctl = false;
+            }
+            Event::Key(KeyEvent {
+                code: KeyCode::Char(c),
+                modifiers: KeyModifiers::NONE,
+            }) => {
+                self.wr.write_all(&[c as u8]).await?;
+            }
+            Event::Key(KeyEvent {
+                code: KeyCode::Enter,
+                modifiers: KeyModifiers::NONE,
+            }) => {
+                self.wr.write_all(b"\n").await?;
+            }
+            Event::Key(KeyEvent {
+                code: KeyCode::Up,
+                modifiers: KeyModifiers::NONE,
+            }) => {
+                self.wr.write_all(b"\x10").await?;
+            }
+            Event::Key(KeyEvent {
+                code: KeyCode::Down,
+                modifiers: KeyModifiers::NONE,
+            }) => {
+                self.wr.write_all(b"\x0e").await?;
+            }
+            Event::Key(KeyEvent {
+                code: KeyCode::Left,
+                modifiers: KeyModifiers::NONE,
+            }) => {
+                self.wr.write_all(b"\x10").await?;
+            }
+            Event::Key(KeyEvent {
+                code: KeyCode::Right,
+                modifiers: KeyModifiers::NONE,
+            }) => {
+                self.wr.write_all(b"\x0e").await?;
+            }
+            Event::Key(KeyEvent {
+                code: KeyCode::Tab,
+                modifiers: KeyModifiers::NONE,
+            }) => {
+                self.wr.write_all(b"\t").await?;
+            }
+            evt => {
+                println!("{:?}\r", evt);
+            }
+        }
+
+        Ok(())
+    }
 }
 
 #[tokio::main]
@@ -71,7 +141,6 @@ async fn main() -> io::Result<()> {
     vppsh.sock_wr(term_type.as_bytes()).await?;
     vppsh.sock_wr(b"\xff\xf0").await?;
 
-
     loop {
         tokio::select! {
             Ok(n) = vppsh.rd.read(&mut vppsh.response) => {
@@ -79,8 +148,7 @@ async fn main() -> io::Result<()> {
                     break;
                 };
                 if vppsh.vppctl {
-                    vppsh.stdout.write_all(&vppsh.response[0..n]).await?;
-                    vppsh.stdout.flush().await?;
+                    vppsh.term_wr_response(n).await?;
                     // write!(String::from_utf8_lossy(&response[0..n]));
                     // println!("{}-{:?}", n, &response[0..n]);
                 } else {
@@ -96,30 +164,13 @@ async fn main() -> io::Result<()> {
                     Some(Ok(event)) => event,
                 };
                 if vppsh.vppctl {
-                    match event {
-                        Event::Key(KeyEvent{code: KeyCode::Esc,modifiers: KeyModifiers::NONE }) => {
-                            vppsh.vppctl = false;
-                        }
-                        Event::Key(KeyEvent { code: KeyCode::Char(c), modifiers: KeyModifiers::NONE }) => {
-                            vppsh.wr.write_all(&[c as u8]).await?;
-                        }
-                        Event::Key(KeyEvent { code: KeyCode::Enter, modifiers: KeyModifiers::NONE }) => {
-                            vppsh.wr.write_all(b"\n").await?;
-                        }
-                        Event::Key(KeyEvent { code: KeyCode::Up, modifiers: KeyModifiers::NONE }) => {
-                            vppsh.wr.write_all(b"\x10").await?;
-                        }
-                        Event::Key(KeyEvent { code: KeyCode::Down, modifiers: KeyModifiers::NONE }) => {
-                            vppsh.wr.write_all(b"\x0e").await?;
-                        }
-                        Event::Key(KeyEvent { code: KeyCode::Tab, modifiers: KeyModifiers::NONE }) => {
-                            vppsh.wr.write_all(b"\t").await?;
-                        }
-                        evt => {println!("{:?}\r", evt);}
-                    }
+                    vppsh.ctl_handle(event).await?;
                 } else {
                     match event {
                         Event::Key(KeyEvent{code: KeyCode::Char('v'),modifiers: KeyModifiers::CONTROL }) => {
+                            execute!(std::io::stdout(), terminal::Clear(terminal::ClearType::All))?;
+                            execute!(std::io::stdout(), cursor::MoveTo(0, 0))?;
+                            vppsh.term_wr(b"Enter vppctl interactive mode\n\rvpp# ").await?;
                             vppsh.vppctl = true;
 
                         }
