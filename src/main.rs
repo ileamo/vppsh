@@ -8,6 +8,12 @@ use tokio::io::{self, AsyncReadExt, AsyncWriteExt, Stdout};
 use tokio::net::unix::{ReadHalf, WriteHalf};
 use tokio::net::UnixStream;
 
+const IAC: u8 = 255;
+const SB: u8 = 250;
+const SE: u8 = 240;
+const TELOPT_TTYPE: u8 = 24;
+const TELOPT_NAWS: u8 = 31;
+
 #[derive(Parser, Default)]
 #[clap(version, about = "VPP shell")]
 struct Cli {
@@ -27,6 +33,7 @@ struct VppSh<'a> {
     rd: ReadHalf<'a>,
     wr: WriteHalf<'a>,
     response: [u8; 1024],
+    win_size: (u16, u16),
 }
 
 impl Drop for VppSh<'_> {
@@ -50,6 +57,24 @@ impl VppSh<'_> {
     async fn term_wr_response(&mut self, n: usize) -> io::Result<()> {
         self.stdout.write_all(&self.response[0..n]).await?;
         self.stdout.flush().await?;
+        Ok(())
+    }
+
+    async fn win_resize(&mut self) -> io::Result<()> {
+        self.win_size = terminal::size()?;
+        self.sock_wr(&[
+            IAC,
+            SB,
+            TELOPT_NAWS,
+            (self.win_size.0 >> 8) as u8,
+            self.win_size.0 as u8,
+            (self.win_size.1 >> 8) as u8,
+            self.win_size.1 as u8,
+            IAC,
+            SE,
+        ])
+        .await?;
+
         Ok(())
     }
 
@@ -135,11 +160,14 @@ async fn main() -> io::Result<()> {
         wr,
         response,
         vppctl: false,
+        win_size: terminal::size()?,
     };
 
-    vppsh.sock_wr(b"\xff\xfa\x18\x00").await?;
+    vppsh.sock_wr(&[IAC, SB, TELOPT_TTYPE, 0]).await?;
     vppsh.sock_wr(term_type.as_bytes()).await?;
-    vppsh.sock_wr(b"\xff\xf0").await?;
+    vppsh.sock_wr(&[IAC, SE]).await?;
+
+    vppsh.win_resize().await?;
 
     loop {
         tokio::select! {
@@ -163,21 +191,26 @@ async fn main() -> io::Result<()> {
                     Some(Err(_)) => break, // IO error on stdin
                     Some(Ok(event)) => event,
                 };
-                if vppsh.vppctl {
-                    vppsh.ctl_handle(event).await?;
-                } else {
-                    match event {
-                        Event::Key(KeyEvent{code: KeyCode::Char('v'),modifiers: KeyModifiers::CONTROL }) => {
-                            execute!(std::io::stdout(), terminal::Clear(terminal::ClearType::All))?;
-                            execute!(std::io::stdout(), cursor::MoveTo(0, 0))?;
-                            vppsh.term_wr(b"Enter vppctl interactive mode\n\rvpp# ").await?;
-                            vppsh.vppctl = true;
 
+                if let Event::Resize(_, _) = event {
+                    vppsh.win_resize().await?;
+                } else {
+                    if vppsh.vppctl {
+                        vppsh.ctl_handle(event).await?;
+                    } else {
+                        match event {
+                            Event::Key(KeyEvent{code: KeyCode::Char('v'),modifiers: KeyModifiers::CONTROL }) => {
+                                execute!(std::io::stdout(), terminal::Clear(terminal::ClearType::All))?;
+                                execute!(std::io::stdout(), cursor::MoveTo(0, 0))?;
+                                vppsh.term_wr(b"Enter vppctl interactive mode\n\rvpp# ").await?;
+                                vppsh.vppctl = true;
+
+                            }
+                            Event::Key(KeyEvent{code: KeyCode::Char('q'),modifiers: KeyModifiers::CONTROL }) => {
+                                break;
+                            }
+                            evt => {println!("vppsh: {:?}\r", evt);}
                         }
-                        Event::Key(KeyEvent{code: KeyCode::Char('q'),modifiers: KeyModifiers::CONTROL }) => {
-                            break;
-                        }
-                        evt => {println!("vppsh: {:?}\r", evt);}
                     }
                 }
             }
