@@ -5,7 +5,7 @@ use crossterm::event::{Event, EventStream, KeyCode, KeyEvent, KeyModifiers};
 use crossterm::{cursor, execute, terminal};
 use futures::StreamExt;
 use tokio::io::{self, AsyncReadExt, AsyncWriteExt, Stdout};
-use tokio::net::unix::{ReadHalf, WriteHalf};
+use tokio::net::unix::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::UnixStream;
 
 const IAC: u8 = 255;
@@ -32,11 +32,12 @@ struct Cli {
 }
 
 struct VppSh<'a> {
+    args: &'a Cli,
     vppctl: bool,
     stdout: Stdout,
     term_reader: EventStream,
-    rd: ReadHalf<'a>,
-    wr: WriteHalf<'a>,
+    rd: OwnedReadHalf,
+    wr: OwnedWriteHalf,
     response: [u8; 1024],
     win_size: (u16, u16),
 }
@@ -48,6 +49,14 @@ impl Drop for VppSh<'_> {
 }
 
 impl VppSh<'_> {
+    async fn connect(&mut self) -> io::Result<()> {
+        let stream = UnixStream::connect(&self.args.socket).await?;
+        let (rd, wr) = stream.into_split();
+        self.rd = rd;
+        self.wr = wr;
+        Ok(())
+    }
+
     async fn sock_wr(&mut self, buf: &[u8]) -> io::Result<()> {
         self.wr.write_all(buf).await?;
         Ok(())
@@ -87,6 +96,17 @@ impl VppSh<'_> {
         Ok(())
     }
 
+    async fn ctl_init(&mut self) -> io::Result<()> {
+        let term_type = env::var("TERM").expect("Could not determine terminal type");
+
+        self.sock_wr(&[IAC, SB, TELOPT_TTYPE, 0]).await?;
+        self.sock_wr(term_type.as_bytes()).await?;
+        self.sock_wr(&[IAC, SE]).await?;
+        self.win_resize().await?;
+
+        Ok(())
+    }
+
     async fn sh_handle(&mut self, event: Event) -> io::Result<Loop> {
         match event {
             Event::Key(KeyEvent {
@@ -110,15 +130,20 @@ impl VppSh<'_> {
         Ok(Loop::Continue)
     }
 
+    async fn quit_vppctl(&mut self) -> io::Result<()> {
+        self.vppctl = false;
+        clear_terminal()?;
+        print_header();
+        Ok(())
+    }
+
     async fn ctl_handle(&mut self, event: Event) -> io::Result<()> {
         match event {
             Event::Key(KeyEvent {
                 code: KeyCode::Esc,
                 modifiers: KeyModifiers::NONE,
             }) => {
-                self.vppctl = false;
-                clear_terminal()?;
-                print_header()
+                self.quit_vppctl().await?;
             }
             Event::Key(KeyEvent {
                 code: KeyCode::Char(c),
@@ -181,41 +206,37 @@ impl VppSh<'_> {
 async fn main() -> io::Result<()> {
     print_header();
 
-    let term_type = env::var("TERM").expect("Could not determine terminal type");
-
     let args = Cli::parse();
 
     let stdout = io::stdout();
 
     terminal::enable_raw_mode().expect("Could not turn terminal on Raw mode");
     let term_reader = EventStream::new();
-    let mut stream = UnixStream::connect(args.socket).await?;
-    let (rd, wr) = stream.split();
-    let response = [0; 1024];
+
+    let stream = UnixStream::connect(&args.socket).await?;
+    let (rd, wr) = stream.into_split();
 
     let mut vppsh = VppSh {
+        args: &args,
         stdout,
         term_reader,
         rd,
         wr,
-        response,
+        response: [0; 1024],
         vppctl: false,
         win_size: terminal::size()?,
     };
 
-    vppsh.sock_wr(&[IAC, SB, TELOPT_TTYPE, 0]).await?;
-    vppsh.sock_wr(term_type.as_bytes()).await?;
-    vppsh.sock_wr(&[IAC, SE]).await?;
-
-    vppsh.win_resize().await?;
+    vppsh.ctl_init().await?;
 
     loop {
         tokio::select! {
             Ok(n) = vppsh.rd.read(&mut vppsh.response) => {
                 if n == 0 {
-                    break;
-                };
-                if vppsh.vppctl {
+                    vppsh.quit_vppctl().await?;
+                    vppsh.connect().await?;
+                    vppsh.ctl_init().await?;
+                } else if vppsh.vppctl {
                     vppsh.term_wr_response(n).await?;
                 } else {
 
