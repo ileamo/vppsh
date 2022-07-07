@@ -3,6 +3,7 @@ use crossterm::{
     event::{Event, EventStream, KeyCode, KeyEvent, KeyModifiers},
     execute, terminal,
 };
+use gettext::Catalog;
 use std::env;
 use tokio::{
     io::{self, AsyncWriteExt, Stdout},
@@ -11,6 +12,8 @@ use tokio::{
         UnixStream,
     },
 };
+#[macro_use]
+extern crate tr;
 
 const IAC: u8 = 255;
 const SB: u8 = 250;
@@ -32,6 +35,8 @@ pub struct VppSh<'a> {
     pub wr: OwnedWriteHalf,
     pub response: [u8; 1024],
     pub win_size: (u16, u16),
+    pub ru: Catalog,
+    pub en: Catalog,
 }
 
 impl Drop for VppSh<'_> {
@@ -106,10 +111,29 @@ impl VppSh<'_> {
                 modifiers: KeyModifiers::NONE,
             }) => {
                 clear_terminal()?;
-                self.term_wr(b"Enter vppctl interactive mode\n\rvpp# ")
+                self.term_wr(format!("{}\n\rvpp# ", tr!("Enter vppctl interactive mode")).as_bytes())
                     .await?;
                 self.vppctl = true;
             }
+
+            Event::Key(KeyEvent {
+                code: KeyCode::Char('e'),
+                modifiers: KeyModifiers::NONE,
+            }) => {
+                set_translator!(self.en.clone());
+                clear_terminal()?;
+                print_header();
+            }
+
+            Event::Key(KeyEvent {
+                code: KeyCode::Char('r'),
+                modifiers: KeyModifiers::NONE,
+            }) => {
+                set_translator!(self.ru.clone());
+                clear_terminal()?;
+                print_header();
+            }
+
             Event::Key(KeyEvent {
                 code: KeyCode::Char('q'),
                 modifiers: KeyModifiers::NONE,
@@ -203,7 +227,8 @@ pub fn print_header() {
         |__|   |__|       \\/     \\/\r
 ";
 
-    println!("{}", header);
+    println!("{}\r", header);
+    println!("{}\r", tr!("Wrapper around vppctl"));
 }
 
 fn clear_terminal() -> io::Result<()> {

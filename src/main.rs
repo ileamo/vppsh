@@ -2,8 +2,13 @@ use clap::Parser;
 use crossterm::event::{Event, EventStream};
 use crossterm::terminal;
 use futures::StreamExt;
+use gettext::Catalog;
+use std::fs::File;
 use tokio::io::{self, AsyncReadExt};
 use tokio::net::UnixStream;
+
+#[macro_use]
+extern crate tr;
 
 #[derive(Parser, Default)]
 #[clap(version, about = "VPP shell")]
@@ -19,6 +24,13 @@ struct Cli {
 
 #[tokio::main]
 async fn main() -> io::Result<()> {
+
+    let f = File::open("./i18n/mo/ru/vppsh.mo").expect("could not open the catalog");
+    let ru = Catalog::parse(f).expect("could not parse the catalog");
+    set_translator!(ru.clone());
+    let f = File::open("./i18n/mo/en/vppsh.mo").expect("could not open the catalog");
+    let en = Catalog::parse(f).expect("could not parse the catalog");
+
     vppsh::print_header();
 
     let args = Cli::parse();
@@ -40,6 +52,8 @@ async fn main() -> io::Result<()> {
         response: [0; 1024],
         vppctl: false,
         win_size: terminal::size()?,
+        ru,
+        en,
     };
 
     vppsh.ctl_init().await?;
