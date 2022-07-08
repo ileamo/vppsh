@@ -107,7 +107,7 @@ impl VppSh<'_> {
     pub async fn sh_handle(&mut self, event: Event) -> io::Result<Loop> {
         match event {
             Event::Key(KeyEvent {
-                code: KeyCode::Char('c'),
+                code: KeyCode::Char('i'),
                 modifiers: KeyModifiers::NONE,
             }) => {
                 clear_terminal()?;
@@ -138,8 +138,8 @@ impl VppSh<'_> {
                 code: KeyCode::Char('q'),
                 modifiers: KeyModifiers::NONE,
             }) => return Ok(Loop::Break),
-            evt => {
-                println!("vppsh: {:?}\r", evt);
+            _evt => {
+                // println!("vppsh: {:?}\r", evt);
             }
         }
 
@@ -228,7 +228,14 @@ pub fn print_header() {
 ";
 
     println!("{}\r", header);
-    println!("{}\r", tr!("Wrapper around vppctl"));
+    println!("{}\r\n", tr!("Wrapper around vppctl"));
+    println!("{}\r\n",tr!("Commands"));
+    println!("i - {}\r",tr!("Enter vppctl mode"));
+    println!("q - {}\r",tr!("Quit"));
+    println!("e - {}\r",tr!("Set english locale"));
+    println!("r - {}\r",tr!("Set russian locale"));
+    println!("\n{}\r",tr!("More comands under constuction"));
+
 }
 
 fn clear_terminal() -> io::Result<()> {

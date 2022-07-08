@@ -1,39 +1,74 @@
+use std::str::FromStr;
+
 use clap::Parser;
 use crossterm::event::{Event, EventStream};
 use crossterm::terminal;
 use futures::StreamExt;
 use gettext::Catalog;
-use std::fs::File;
+use rust_embed::RustEmbed;
 use tokio::io::{self, AsyncReadExt};
 use tokio::net::UnixStream;
 
 #[macro_use]
 extern crate tr;
 
+#[derive(Default)]
+enum Locale {
+    #[default]
+    Ru,
+    En,
+}
+
+impl FromStr for Locale {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "en" => Ok(Locale::En),
+            "ru" => Ok(Locale::Ru),
+            _ => Err("value must be 'en' or 'ru'".to_string()),
+        }
+    }
+}
+
 #[derive(Parser, Default)]
 #[clap(version, about = "VPP shell")]
 struct Cli {
-    /// VPP command
-    #[clap(forbid_empty_values = true, validator = validate_vpp_command)]
-    command: Option<String>,
-
-    /// VPP &cli socket path
+    /// VPP cli socket path
     #[clap(default_value = "/run/vpp/cli.sock", short, long)]
     socket: String,
+
+    /// Set locale
+    #[clap(default_value = "ru",short, long)]
+    locale: Locale,
 }
+
+#[derive(RustEmbed)]
+#[folder = "i18n/mo"]
+struct Asset;
 
 #[tokio::main]
 async fn main() -> io::Result<()> {
+    for file in Asset::iter() {
+        println!("{}", file.as_ref());
+    }
 
-    let f = File::open("./i18n/mo/ru/vppsh.mo").expect("could not open the catalog");
-    let ru = Catalog::parse(f).expect("could not parse the catalog");
-    set_translator!(ru.clone());
-    let f = File::open("./i18n/mo/en/vppsh.mo").expect("could not open the catalog");
-    let en = Catalog::parse(f).expect("could not parse the catalog");
+    let ru_mo = Asset::get("ru/vppsh.mo").expect("could not find ru/vppsh.mo");
+    let ru_mo = ru_mo.data.as_ref();
+    let ru = Catalog::parse(ru_mo).expect("could not parse the catalog ru/vppsh.mo");
 
-    vppsh::print_header();
+    let en_mo = Asset::get("en/vppsh.mo").expect("could not find en/vppsh.mo");
+    let en_mo = en_mo.data.as_ref();
+    let en = Catalog::parse(en_mo).expect("could not parse the catalog en/vppsh.mo");
 
     let args = Cli::parse();
+
+    set_translator!(match args.locale {
+        Locale::Ru => ru.clone(),
+        Locale::En => en.clone(),
+    });
+
+    vppsh::print_header();
 
     let stdout = io::stdout();
 
@@ -98,12 +133,4 @@ async fn main() -> io::Result<()> {
         }
     }
     Ok(())
-}
-
-fn validate_vpp_command(name: &str) -> Result<(), String> {
-    if name.trim().len() == 0 {
-        Err(String::from("command cannot be empty"))
-    } else {
-        Ok(())
-    }
 }
