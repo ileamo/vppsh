@@ -19,8 +19,6 @@ impl Drop for CleanUp {
     }
 }
 
-
-
 #[derive(Default)]
 enum Locale {
     #[default]
@@ -48,7 +46,7 @@ struct Cli {
     socket: String,
 
     /// Set locale
-    #[clap(default_value = "ru",short, long)]
+    #[clap(default_value = "ru", short, long)]
     locale: Locale,
 }
 
@@ -59,10 +57,6 @@ struct Asset;
 #[tokio::main]
 async fn main() -> io::Result<()> {
     let _clean_up = CleanUp;
-
-    for file in Asset::iter() {
-        println!("{}", file.as_ref());
-    }
 
     let ru_mo = Asset::get("ru/vppsh.mo").expect("could not find ru/vppsh.mo");
     let ru_mo = ru_mo.data.as_ref();
@@ -79,7 +73,6 @@ async fn main() -> io::Result<()> {
         Locale::En => en.clone(),
     });
 
-    vppsh::print_header();
 
     let stdout = io::stdout();
 
@@ -103,6 +96,8 @@ async fn main() -> io::Result<()> {
     };
 
     vppsh.ctl_init().await?;
+
+    vppsh::print_header();
 
     loop {
         tokio::select! {
