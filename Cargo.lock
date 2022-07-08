@@ -88,12 +88,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cc"
-version = "1.0.73"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2fff2a6927b3bb87f9595d67196a70493f627687a71d87a0d692242c33f58c11"
-
-[[package]]
 name = "cfg-if"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -419,25 +413,6 @@ checksum = "9ebb594e753d5997e4be036e5a8cf048ab9414352870fb45c779557bbc9ba971"
 dependencies = [
  "byteorder",
  "encoding",
-]
-
-[[package]]
-name = "gettext-rs"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b95fa19cca70adf9888150e979839ae9bd58f85a1a42e4753699112875189e1"
-dependencies = [
- "gettext-sys",
- "locale_config",
-]
-
-[[package]]
-name = "gettext-sys"
-version = "0.19.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e034c4ba5bb796730a6cc5eb0d654c16885006a7c3d6c6603581ed809434f153"
-dependencies = [
- "cc",
 ]
 
 [[package]]
@@ -1057,7 +1032,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e9e3a8773f8e1570196d9461c8e98778bbc5a4a897ba46c5492d4fc256389b90"
 dependencies = [
  "gettext",
- "gettext-rs",
  "lazy_static",
 ]
 
@@ -1117,6 +1091,7 @@ dependencies = [
  "futures",
  "gettext",
  "i18n-embed",
+ "rust-embed",
  "tokio",
  "tr",
 ]

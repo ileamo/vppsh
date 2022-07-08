@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vppsh 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-07-07 20:11+0000\n"
+"POT-Creation-Date: 2022-07-08 08:07+0000\n"
 "PO-Revision-Date: 2022-07-07 17:57+0300\n"
 "Last-Translator: Igor <imosunov@nsg.net.ru>\n"
 "Language-Team: Russian\n"
@@ -26,17 +26,26 @@ msgstr "Интерактивный режим vppctl. Для выхода наж
 msgid "Wrapper around vppctl"
 msgstr "Обертка для vppctl"
 
-#~ msgid "Please give folder name"
-#~ msgstr "Имя папки плз"
+#: src/lib.rs:232
+msgid "Commands"
+msgstr "Команды"
 
-#~ msgid "The directory {} has one file"
-#~ msgid_plural "The directory {} has {n} files"
-#~ msgstr[0] "Директория {} имеет {n} папка"
-#~ msgstr[1] "Директория {} имеет {n} папки"
-#~ msgstr[2] "Директория {} имеет {n} папок"
+#: src/lib.rs:233
+msgid "Enter vppctl mode"
+msgstr "Войти в интерактивный режим vppctl"
 
-#~ msgid "My name is {}"
-#~ msgstr "Меня зовут {}"
+#: src/lib.rs:234
+msgid "Quit"
+msgstr "Выход"
 
-#~ msgid "Name"
-#~ msgstr "Имя"
+#: src/lib.rs:235
+msgid "Set english locale"
+msgstr "Установить английскую локаль"
+
+#: src/lib.rs:236
+msgid "Set russian locale"
+msgstr "Установить русскую локаль"
+
+#: src/lib.rs:237
+msgid "More comands under constuction"
+msgstr "Остальные команды в процессе разработки"
