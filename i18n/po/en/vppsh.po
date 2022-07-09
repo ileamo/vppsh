@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vppsh 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-07-08 08:07+0000\n"
+"POT-Creation-Date: 2022-07-08 14:41+0000\n"
 "PO-Revision-Date: 2022-07-07 19:43+0300\n"
 "Last-Translator: Igor <imosunov@nsg.net.ru>\n"
 "Language-Team: English\n"
@@ -17,36 +17,36 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: src/lib.rs:114
+#: src/lib.rs:108
 msgid "Enter vppctl interactive mode"
 msgstr "vppctl interactive mode. For exit press ESC"
 
-#: src/lib.rs:231
+#: src/lib.rs:225
 msgid "Wrapper around vppctl"
 msgstr ""
 
-#: src/lib.rs:232
+#: src/lib.rs:226
 msgid "Commands"
 msgstr ""
 
-#: src/lib.rs:233
+#: src/lib.rs:227
 #, fuzzy
 msgid "Enter vppctl mode"
 msgstr "vppctl interactive mode. For exit press ESC"
 
-#: src/lib.rs:234
+#: src/lib.rs:228
 msgid "Quit"
 msgstr ""
 
-#: src/lib.rs:235
+#: src/lib.rs:229
 msgid "Set english locale"
 msgstr ""
 
-#: src/lib.rs:236
+#: src/lib.rs:230
 msgid "Set russian locale"
 msgstr ""
 
-#: src/lib.rs:237
+#: src/lib.rs:231
 msgid "More comands under constuction"
 msgstr ""
 
