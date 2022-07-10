@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vppsh 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-07-08 08:07+0000\n"
+"POT-Creation-Date: 2022-07-09 18:49+0000\n"
 "PO-Revision-Date: 2022-07-07 17:57+0300\n"
 "Last-Translator: Igor <imosunov@nsg.net.ru>\n"
 "Language-Team: Russian\n"
@@ -18,34 +18,38 @@ msgstr ""
 "Plural-Forms: nplurals=3; plural=((n%10==1 && n%100!=11) ? 0 : (n%10>=2 && n"
 "%10<=4 && (n%100<10 || n%100>=20)) ? 1 : 2);\n"
 
-#: src/lib.rs:114
+#: src/main.rs:91
+msgid "Could not connect vpp ctl socket"
+msgstr "Не могу подключиться к сокету vpp"
+
+#: src/lib.rs:108
 msgid "Enter vppctl interactive mode"
 msgstr "Интерактивный режим vppctl. Для выхода нажмите ESC"
 
-#: src/lib.rs:231
+#: src/lib.rs:225
 msgid "Wrapper around vppctl"
 msgstr "Обертка для vppctl"
 
-#: src/lib.rs:232
+#: src/lib.rs:226
 msgid "Commands"
 msgstr "Команды"
 
-#: src/lib.rs:233
+#: src/lib.rs:227
 msgid "Enter vppctl mode"
 msgstr "Войти в интерактивный режим vppctl"
 
-#: src/lib.rs:234
+#: src/lib.rs:228
 msgid "Quit"
 msgstr "Выход"
 
-#: src/lib.rs:235
+#: src/lib.rs:229
 msgid "Set english locale"
 msgstr "Установить английскую локаль"
 
-#: src/lib.rs:236
+#: src/lib.rs:230
 msgid "Set russian locale"
 msgstr "Установить русскую локаль"
 
-#: src/lib.rs:237
+#: src/lib.rs:231
 msgid "More comands under constuction"
 msgstr "Остальные команды в процессе разработки"

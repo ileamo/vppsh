@@ -8,6 +8,7 @@ use gettext::Catalog;
 use rust_embed::RustEmbed;
 use tokio::io::{self, AsyncReadExt};
 use tokio::net::UnixStream;
+use sys_locale::get_locale;
 
 #[macro_use]
 extern crate tr;
@@ -22,6 +23,7 @@ impl Drop for CleanUp {
 #[derive(Default)]
 enum Locale {
     #[default]
+    Sys,
     Ru,
     En,
 }
@@ -33,7 +35,8 @@ impl FromStr for Locale {
         match s {
             "en" => Ok(Locale::En),
             "ru" => Ok(Locale::Ru),
-            _ => Err("value must be 'en' or 'ru'".to_string()),
+            "sys" => Ok(Locale::Sys),
+            _ => Err("value must be 'en', 'ru' or 'sys'".to_string()),
         }
     }
 }
@@ -46,7 +49,7 @@ struct Cli {
     socket: String,
 
     /// Set locale
-    #[clap(default_value = "ru", short, long)]
+    #[clap(default_value = "sys", short, long)]
     locale: Locale,
 }
 
@@ -71,6 +74,12 @@ async fn main() -> io::Result<()> {
     set_translator!(match args.locale {
         Locale::Ru => ru.clone(),
         Locale::En => en.clone(),
+        Locale::Sys => {
+        	match get_locale()  {
+				Some(lcl) if &lcl[0..2] == "ru" => ru.clone(),
+				_ => en.clone(),
+            }
+        },
     });
 
 
@@ -79,7 +88,7 @@ async fn main() -> io::Result<()> {
     terminal::enable_raw_mode().expect("Could not turn terminal on Raw mode");
     let term_reader = EventStream::new();
 
-    let stream = UnixStream::connect(&args.socket).await?;
+    let stream = UnixStream::connect(&args.socket).await.expect(&tr!("Could not connect vpp ctl socket"));
     let (rd, wr) = stream.into_split();
 
     let mut vppsh = vppsh::VppSh {
