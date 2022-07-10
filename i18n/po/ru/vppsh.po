@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vppsh 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-07-08 14:41+0000\n"
+"POT-Creation-Date: 2022-07-09 18:49+0000\n"
 "PO-Revision-Date: 2022-07-07 17:57+0300\n"
 "Last-Translator: Igor <imosunov@nsg.net.ru>\n"
 "Language-Team: Russian\n"
@@ -17,6 +17,10 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=((n%10==1 && n%100!=11) ? 0 : (n%10>=2 && n"
 "%10<=4 && (n%100<10 || n%100>=20)) ? 1 : 2);\n"
+
+#: src/main.rs:91
+msgid "Could not connect vpp ctl socket"
+msgstr "Не могу подключиться к сокету vpp"
 
 #: src/lib.rs:108
 msgid "Enter vppctl interactive mode"

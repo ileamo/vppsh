@@ -88,7 +88,7 @@ async fn main() -> io::Result<()> {
     terminal::enable_raw_mode().expect("Could not turn terminal on Raw mode");
     let term_reader = EventStream::new();
 
-    let stream = UnixStream::connect(&args.socket).await?;
+    let stream = UnixStream::connect(&args.socket).await.expect(&tr!("Could not connect vpp ctl socket"));
     let (rd, wr) = stream.into_split();
 
     let mut vppsh = vppsh::VppSh {
