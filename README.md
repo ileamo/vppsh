@@ -6,20 +6,20 @@ The `vppsh` is a wrapper around `vppctl` for more convenient configuration and m
 ```bash
 cargo run
 ```
----
+
 ## Troubleshooting
 
 You must have vpp running and the appropriate permissions
 ```bash
 sudo usermod -aG vpp <USER>
 ```
----
+
 ## Build a release
 ```bash
 cargo build --release
 ./target/release/vppsh
 ```
----
+
 ## Extract, build and verify localization resources
 Install additional packages and run `i18n` command
 ```bash
