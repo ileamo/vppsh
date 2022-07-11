@@ -22,25 +22,25 @@ const TELOPT_TTYPE: u8 = 24;
 const TELOPT_NAWS: u8 = 31;
 
 const CURR_COMMAND_LEN: usize = 4096;
-const VPP_PREFIX: &[u8] = "vpp# ".as_bytes();
-const VPP_PREFIX_LEN: usize = VPP_PREFIX.len();
 
 pub enum Loop {
     Continue,
     Break,
 }
 
+mod history;
+
 pub struct VppSh<'a> {
-    pub socket_name: &'a str,
+    socket_name: &'a str,
     pub vppctl: bool,
-    pub stdout: Stdout,
+    stdout: Stdout,
     pub term_reader: EventStream,
     pub rd: OwnedReadHalf,
-    pub wr: OwnedWriteHalf,
+    wr: OwnedWriteHalf,
     pub response: [u8; 1024],
-    pub win_size: (u16, u16),
-    pub ru: Catalog,
-    pub en: Catalog,
+    win_size: (u16, u16),
+    ru: Catalog,
+    en: Catalog,
     curr_command: [u8; CURR_COMMAND_LEN],
     curr_command_ptr: usize,
     curr_command_len: usize,
@@ -97,46 +97,7 @@ impl VppSh<'_> {
         self.stdout.write_all(&self.response[0..n]).await?;
         self.stdout.flush().await?;
 
-        for c in &self.response[0..n] {
-            if self.vpp_prefix {
-                match c {
-                    10 | 13 => {
-                        if self.curr_command_len > VPP_PREFIX_LEN && self.was_enter {
-                            println!(
-                                "({})\r",
-                                String::from_utf8_lossy(
-                                    &self.curr_command[VPP_PREFIX_LEN..self.curr_command_len]
-                                )
-                                .trim()
-                            );
-                        }
-                        self.curr_command_ptr = 0;
-                        self.curr_command_len = 0;
-                        self.was_enter = false;
-                    }
-                    8 => {
-                        self.curr_command_ptr -= 1;
-                    }
-                    0..=31 => {}
-                    c => {
-                        self.curr_command[self.curr_command_ptr] = *c;
-                        self.curr_command_ptr += 1;
-                        if self.curr_command_ptr > self.curr_command_len {
-                            self.curr_command_len = self.curr_command_ptr;
-                        }
-                        if self.curr_command_len == VPP_PREFIX_LEN
-                            && &self.curr_command[0..VPP_PREFIX_LEN] != VPP_PREFIX
-                        {
-                            self.vpp_prefix = false;
-                            self.curr_command_ptr = 0;
-                            self.curr_command_len = 0;
-                        }
-                    }
-                }
-            } else if c == &(10 as u8) {
-                self.vpp_prefix = true;
-            }
-        }
+        self.collect_history(n);
 
         // println!("{:?}\r", &self.response[0..n]);
 
