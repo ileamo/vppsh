@@ -21,6 +21,10 @@ const SE: u8 = 240;
 const TELOPT_TTYPE: u8 = 24;
 const TELOPT_NAWS: u8 = 31;
 
+const CURR_COMMAND_LEN: usize = 4096;
+const VPP_PREFIX: &[u8] = "vpp# ".as_bytes();
+const VPP_PREFIX_LEN: usize = VPP_PREFIX.len();
+
 pub enum Loop {
     Continue,
     Break,
@@ -37,6 +41,11 @@ pub struct VppSh<'a> {
     pub win_size: (u16, u16),
     pub ru: Catalog,
     pub en: Catalog,
+    curr_command: [u8; CURR_COMMAND_LEN],
+    curr_command_ptr: usize,
+    curr_command_len: usize,
+    vpp_prefix: bool,
+    was_enter: bool,
 }
 
 impl VppSh<'_> {
@@ -57,6 +66,11 @@ impl VppSh<'_> {
             win_size: terminal::size().unwrap(),
             ru,
             en,
+            curr_command: [0; CURR_COMMAND_LEN],
+            curr_command_ptr: 0,
+            curr_command_len: 0,
+            vpp_prefix: true,
+            was_enter: false,
         }
     }
 
@@ -83,8 +97,48 @@ impl VppSh<'_> {
         self.stdout.write_all(&self.response[0..n]).await?;
         self.stdout.flush().await?;
 
-        // write!(String::from_utf8_lossy(&response[0..n]));
-        // println!("{}-{:?}", n, &self.response[0..n]);
+        for c in &self.response[0..n] {
+            if self.vpp_prefix {
+                match c {
+                    10 | 13 => {
+                        if self.curr_command_len > VPP_PREFIX_LEN && self.was_enter {
+                            println!(
+                                "({})\r",
+                                String::from_utf8_lossy(
+                                    &self.curr_command[VPP_PREFIX_LEN..self.curr_command_len]
+                                )
+                                .trim()
+                            );
+                        }
+                        self.curr_command_ptr = 0;
+                        self.curr_command_len = 0;
+                        self.was_enter = false;
+                    }
+                    8 => {
+                        self.curr_command_ptr -= 1;
+                    }
+                    0..=31 => {}
+                    c => {
+                        self.curr_command[self.curr_command_ptr] = *c;
+                        self.curr_command_ptr += 1;
+                        if self.curr_command_ptr > self.curr_command_len {
+                            self.curr_command_len = self.curr_command_ptr;
+                        }
+                        if self.curr_command_len == VPP_PREFIX_LEN
+                            && &self.curr_command[0..VPP_PREFIX_LEN] != VPP_PREFIX
+                        {
+                            self.vpp_prefix = false;
+                            self.curr_command_ptr = 0;
+                            self.curr_command_len = 0;
+                        }
+                    }
+                }
+            } else if c == &(10 as u8) {
+                self.vpp_prefix = true;
+            }
+        }
+
+        // println!("{:?}\r", &self.response[0..n]);
 
         Ok(())
     }
@@ -125,11 +179,12 @@ impl VppSh<'_> {
                 modifiers: KeyModifiers::NONE,
             }) => {
                 clear_terminal()?;
-                self.term_wr(
-                    format!("{}\n\rvpp# ", tr!("Enter vppctl interactive mode")).as_bytes(),
-                )
-                .await?;
+                self.term_wr(format!("{}\n\r", tr!("Enter vppctl interactive mode")).as_bytes())
+                    .await?;
+                self.curr_command_ptr = 0;
+                self.curr_command_len = 0;
                 self.vppctl = true;
+                self.wr.write_all(b"\n").await?;
             }
 
             Event::Key(KeyEvent {
@@ -188,6 +243,7 @@ impl VppSh<'_> {
                 modifiers: KeyModifiers::NONE,
             }) => {
                 self.wr.write_all(b"\n").await?;
+                self.was_enter = true;
             }
             Event::Key(KeyEvent {
                 code: KeyCode::Up,
