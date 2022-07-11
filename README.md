@@ -1,7 +1,7 @@
 The `vppsh` is a wrapper around `vppctl` for more convenient VPP configuration and monitoring.
 > **_NOTE:_** The vppsh is in alpha stage
 ## Quick start
-* Install rust, see https://www.rust-lang.org/tools/install
+* Install Rust, see https://www.rust-lang.org/tools/install
 * Run vppsh
 ```bash
 cargo run

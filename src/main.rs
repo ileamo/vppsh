@@ -1,14 +1,13 @@
 use std::str::FromStr;
 
 use clap::Parser;
-use crossterm::event::{Event, EventStream};
+use crossterm::event::Event;
 use crossterm::terminal;
 use futures::StreamExt;
 use gettext::Catalog;
 use rust_embed::RustEmbed;
-use tokio::io::{self, AsyncReadExt};
-use tokio::net::UnixStream;
 use sys_locale::get_locale;
+use tokio::io::{self, AsyncReadExt};
 
 #[macro_use]
 extern crate tr;
@@ -75,34 +74,16 @@ async fn main() -> io::Result<()> {
         Locale::Ru => ru.clone(),
         Locale::En => en.clone(),
         Locale::Sys => {
-        	match get_locale()  {
-				Some(lcl) if &lcl[0..2] == "ru" => ru.clone(),
-				_ => en.clone(),
+            match get_locale() {
+                Some(lcl) if &lcl[0..2] == "ru" => ru.clone(),
+                _ => en.clone(),
             }
-        },
+        }
     });
 
-
-    let stdout = io::stdout();
-
     terminal::enable_raw_mode().expect("Could not turn terminal on Raw mode");
-    let term_reader = EventStream::new();
 
-    let stream = UnixStream::connect(&args.socket).await.expect(&tr!("Could not connect vpp ctl socket"));
-    let (rd, wr) = stream.into_split();
-
-    let mut vppsh = vppsh::VppSh {
-        socket_name: &args.socket,
-        stdout,
-        term_reader,
-        rd,
-        wr,
-        response: [0; 1024],
-        vppctl: false,
-        win_size: terminal::size()?,
-        ru,
-        en,
-    };
+    let mut vppsh = vppsh::VppSh::new(&args.socket, en, ru).await;
 
     vppsh.ctl_init().await?;
 

@@ -40,6 +40,26 @@ pub struct VppSh<'a> {
 }
 
 impl VppSh<'_> {
+    pub async fn new(socket_name: &str, en: Catalog, ru: Catalog) -> VppSh {
+        let stream = UnixStream::connect(socket_name)
+            .await
+            .expect(&tr!("Could not connect vpp ctl socket"));
+        let (rd, wr) = stream.into_split();
+
+        VppSh {
+            socket_name: socket_name,
+            stdout: io::stdout(),
+            term_reader: EventStream::new(),
+            rd,
+            wr,
+            response: [0; 1024],
+            vppctl: false,
+            win_size: terminal::size().unwrap(),
+            ru,
+            en,
+        }
+    }
+
     pub async fn connect(&mut self) -> io::Result<()> {
         let stream = UnixStream::connect(&self.socket_name).await?;
         let (rd, wr) = stream.into_split();
@@ -105,8 +125,10 @@ impl VppSh<'_> {
                 modifiers: KeyModifiers::NONE,
             }) => {
                 clear_terminal()?;
-                self.term_wr(format!("{}\n\rvpp# ", tr!("Enter vppctl interactive mode")).as_bytes())
-                    .await?;
+                self.term_wr(
+                    format!("{}\n\rvpp# ", tr!("Enter vppctl interactive mode")).as_bytes(),
+                )
+                .await?;
                 self.vppctl = true;
             }
 
@@ -223,13 +245,12 @@ pub fn print_header() {
 
     println!("{}\r", header);
     println!("{}\r\n", tr!("Wrapper around vppctl"));
-    println!("{}\r\n",tr!("Commands"));
-    println!("i - {}\r",tr!("Enter vppctl mode"));
-    println!("q - {}\r",tr!("Quit"));
-    println!("e - {}\r",tr!("Set english locale"));
-    println!("r - {}\r",tr!("Set russian locale"));
-    println!("\n{}\r",tr!("More comands under constuction"));
-
+    println!("{}\r\n", tr!("Commands"));
+    println!("i - {}\r", tr!("Enter vppctl mode"));
+    println!("q - {}\r", tr!("Quit"));
+    println!("e - {}\r", tr!("Set english locale"));
+    println!("r - {}\r", tr!("Set russian locale"));
+    println!("\n{}\r", tr!("More comands under constuction"));
 }
 
 fn clear_terminal() -> io::Result<()> {
