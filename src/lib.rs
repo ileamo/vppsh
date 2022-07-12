@@ -1,9 +1,12 @@
+mod history;
+
 use crossterm::{
     cursor,
     event::{Event, EventStream, KeyCode, KeyEvent, KeyModifiers},
     execute, terminal,
 };
 use gettext::Catalog;
+use history::History;
 use std::env;
 use tokio::{
     io::{self, AsyncWriteExt, Stdout},
@@ -21,14 +24,12 @@ const SE: u8 = 240;
 const TELOPT_TTYPE: u8 = 24;
 const TELOPT_NAWS: u8 = 31;
 
-const CURR_COMMAND_LEN: usize = 4096;
 
 pub enum Loop {
     Continue,
     Break,
 }
 
-mod history;
 
 pub struct VppSh<'a> {
     socket_name: &'a str,
@@ -41,11 +42,7 @@ pub struct VppSh<'a> {
     win_size: (u16, u16),
     ru: Catalog,
     en: Catalog,
-    curr_command: [u8; CURR_COMMAND_LEN],
-    curr_command_ptr: usize,
-    curr_command_len: usize,
-    vpp_prefix: bool,
-    was_enter: bool,
+    history: History,
 }
 
 impl VppSh<'_> {
@@ -66,11 +63,7 @@ impl VppSh<'_> {
             win_size: terminal::size().unwrap(),
             ru,
             en,
-            curr_command: [0; CURR_COMMAND_LEN],
-            curr_command_ptr: 0,
-            curr_command_len: 0,
-            vpp_prefix: true,
-            was_enter: false,
+            history: History::new(),
         }
     }
 
@@ -97,7 +90,7 @@ impl VppSh<'_> {
         self.stdout.write_all(&self.response[0..n]).await?;
         self.stdout.flush().await?;
 
-        self.collect_history(n);
+        self.history.collect_history(&self.response[0..n]);
 
         // println!("{:?}\r", &self.response[0..n]);
 
@@ -142,8 +135,8 @@ impl VppSh<'_> {
                 clear_terminal()?;
                 self.term_wr(format!("{}\n\r", tr!("Enter vppctl interactive mode")).as_bytes())
                     .await?;
-                self.curr_command_ptr = 0;
-                self.curr_command_len = 0;
+
+                self.history.reset_curr_comand();
                 self.vppctl = true;
                 self.wr.write_all(b"\n").await?;
             }
@@ -204,7 +197,7 @@ impl VppSh<'_> {
                 modifiers: KeyModifiers::NONE,
             }) => {
                 self.wr.write_all(b"\n").await?;
-                self.was_enter = true;
+                self.history.was_enter();
             }
             Event::Key(KeyEvent {
                 code: KeyCode::Up,
