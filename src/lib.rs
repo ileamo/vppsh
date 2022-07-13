@@ -1,5 +1,7 @@
 mod history;
+mod conf_tui;
 
+use conf_tui::ConfTui;
 use crossterm::{
     cursor,
     event::{Event, EventStream, KeyCode, KeyEvent, KeyModifiers},
@@ -15,8 +17,6 @@ use tokio::{
         UnixStream,
     },
 };
-use tui::Terminal;
-use tui::backend::CrosstermBackend;
 
 
 #[macro_use]
@@ -45,7 +45,7 @@ pub struct VppSh<'a> {
     ru: Catalog,
     en: Catalog,
     history: History,
-    tui_terminal: Terminal<CrosstermBackend<std::io::Stdout>>,
+    conf_tui: ConfTui,
 }
 
 impl VppSh<'_> {
@@ -54,8 +54,6 @@ impl VppSh<'_> {
             .await
             .expect(&tr!("Could not connect vpp ctl socket"));
         let (rd, wr) = stream.into_split();
-        let backend = CrosstermBackend::new(std::io::stdout());
-        let terminal = Terminal::new(backend).unwrap();
     
         VppSh {
             socket_name: socket_name,
@@ -69,7 +67,7 @@ impl VppSh<'_> {
             ru,
             en,
             history: History::new(),
-            tui_terminal: terminal,
+            conf_tui: ConfTui::new(),
         }
     }
 
@@ -151,7 +149,7 @@ impl VppSh<'_> {
                 code: KeyCode::Char('c'),
                 modifiers: KeyModifiers::NONE,
             }) => {
-                draw(&mut self.tui_terminal);
+                self.conf_tui.draw(&self.history.history);
             }
 
             Event::Key(KeyEvent {
@@ -290,63 +288,3 @@ fn clear_terminal() -> io::Result<()> {
     Ok(())
 }
 
-//=========================
-
-use tui::backend::Backend;
-use tui::layout::{Alignment, Constraint, Direction, Layout};
-use tui::style::{Color, Style};
-use tui::text::{Span, Spans};
-use tui::widgets::{Block, BorderType, Borders, Paragraph};
-use tui::Frame;
-
-fn draw(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>) {
-    terminal.clear().unwrap();
-    terminal.hide_cursor().unwrap();
-    terminal.draw(|rect| ui_draw(rect)).unwrap();
-}
-
-fn ui_draw<B>(rect: &mut Frame<B>)
-where
-    B: Backend,
-{
-    let size = rect.size();
-
-
-    // Body & Help
-    let body_chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
-        .split(size);
-
-    let body = draw_body();
-    rect.render_widget(body, body_chunks[0]);
-
-    let help = draw_help();
-    rect.render_widget(help, body_chunks[1]);
-}
-
-fn draw_body<'a>() -> Paragraph<'a> {
-    Paragraph::new(vec![Spans::from(Span::raw("text"))])
-        .style(Style::default().fg(Color::LightCyan))
-        .alignment(Alignment::Left)
-        .block(
-            Block::default()
-                // .title("Body")
-                .borders(Borders::RIGHT)
-                .style(Style::default().fg(Color::White))
-                .border_type(BorderType::Plain),
-        )
-}
-
-fn draw_help<'a>() -> Paragraph<'a> {
-    Paragraph::new(vec![Spans::from(Span::raw("text"))])
-        .style(Style::default().fg(Color::LightCyan))
-        .alignment(Alignment::Left)
-        .block(
-            Block::default()
-                // .title("Body")
-                .borders(Borders::NONE)
-                .style(Style::default().fg(Color::White))
-                .border_type(BorderType::Plain),
-        )
-}

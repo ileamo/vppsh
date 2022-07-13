@@ -3,7 +3,7 @@ const VPP_PREFIX: &[u8] = "vpp# ".as_bytes();
 const VPP_PREFIX_LEN: usize = VPP_PREFIX.len();
 
 pub struct History {
-    history: Vec<Vec<u8>>,
+    pub history: Vec<String>,
     curr_command: [u8; CURR_COMMAND_LEN],
     curr_command_ptr: usize,
     curr_command_len: usize,
@@ -39,7 +39,7 @@ impl History {
                     10 | 13 => {
                         if self.curr_command_len > VPP_PREFIX_LEN && self.was_enter {
                             let hist = &self.curr_command[VPP_PREFIX_LEN..self.curr_command_len];
-                            self.history.push(hist.to_vec());
+                            self.history.push(String::from_utf8_lossy(hist).to_string());
                         }
                         self.curr_command_ptr = 0;
                         self.curr_command_len = 0;
