@@ -1,5 +1,5 @@
-mod history;
 mod conf_tui;
+mod history;
 
 use conf_tui::ConfTui;
 use crossterm::{
@@ -17,7 +17,6 @@ use tokio::{
         UnixStream,
     },
 };
-
 
 #[macro_use]
 extern crate tr;
@@ -54,7 +53,7 @@ impl VppSh<'_> {
             .await
             .expect(&tr!("Could not connect vpp ctl socket"));
         let (rd, wr) = stream.into_split();
-    
+
         VppSh {
             socket_name: socket_name,
             stdout: io::stdout(),
@@ -148,7 +147,8 @@ impl VppSh<'_> {
             Event::Key(KeyEvent {
                 code: KeyCode::Char('c'),
                 modifiers: KeyModifiers::NONE,
-            }) => {
+            })
+            | Event::Resize(_, _) => {
                 self.conf_tui.draw(&self.history.history);
             }
 
@@ -199,6 +199,9 @@ impl VppSh<'_> {
 
     pub async fn ctl_handle(&mut self, event: Event) -> io::Result<()> {
         match event {
+            Event::Resize(_, _) => {
+                self.win_resize().await?;
+            }
             Event::Key(KeyEvent {
                 code: KeyCode::Esc,
                 modifiers: KeyModifiers::NONE,
@@ -287,4 +290,3 @@ fn clear_terminal() -> io::Result<()> {
     execute!(std::io::stdout(), cursor::MoveTo(0, 0))?;
     Ok(())
 }
-

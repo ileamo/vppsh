@@ -42,7 +42,7 @@ where
         .split(size);
 
     let mut pet_list_state = ListState::default();
-    pet_list_state.select(Some(1));
+    pet_list_state.select(Some(0));
 
     let history = draw_history(history);
     rect.render_stateful_widget(history, body_chunks[0], &mut pet_list_state);
@@ -78,7 +78,7 @@ fn draw_conf<'a>() -> Paragraph<'a> {
         .alignment(Alignment::Left)
         .block(
             Block::default()
-                // .title("Body")
+                .title("Configuration")
                 .borders(Borders::ALL)
                 .style(Style::default().fg(Color::White))
                 .border_type(BorderType::Plain),

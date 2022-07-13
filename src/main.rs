@@ -1,7 +1,6 @@
 use std::str::FromStr;
 
 use clap::Parser;
-use crossterm::event::Event;
 use crossterm::terminal;
 use futures::StreamExt;
 use gettext::Catalog;
@@ -110,12 +109,9 @@ async fn main() -> io::Result<()> {
                     Some(Ok(event)) => event,
                 };
 
-                match event {
-                    Event::Resize(_, _) => {
-                        vppsh.win_resize().await?;
-                    }
-                    event => {
-                        if vppsh.vppctl {
+
+
+                if vppsh.vppctl {
                             vppsh.ctl_handle(event).await?;
                         } else {
                             if let vppsh::Loop::Break = vppsh.sh_handle(event).await? {
@@ -123,8 +119,6 @@ async fn main() -> io::Result<()> {
                             }
 
                         }
-                    }
-                }
             }
         }
     }
