@@ -86,7 +86,10 @@ impl History {
     }
 
     pub fn copy(&mut self) {
-        self.conf.push(self.hist[self.hist_selected].clone());
+        let index = self.hist_selected;
+        if index < self.hist.len() {
+            self.conf.push(self.hist[index].clone());
+        }
     }
 
     pub fn reset_curr_comand(&mut self) {

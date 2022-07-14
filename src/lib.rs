@@ -174,20 +174,13 @@ impl VppSh<'_> {
                 self.draw();
             }
 
-            // Event::Key(KeyEvent {
-            //     code: KeyCode::Char('x'),
-            //     modifiers: KeyModifiers::NONE,
-            // }) => {
-            //     clear_terminal()?;
-            //     print_header();
-            // }
             Event::Key(KeyEvent {
                 code: KeyCode::Char('e'),
                 modifiers: KeyModifiers::NONE,
             }) => {
                 set_translator!(self.en.clone());
-                clear_terminal()?;
-                print_header();
+                self.tui_term_clear()?;
+                self.draw();
             }
 
             Event::Key(KeyEvent {
@@ -195,8 +188,8 @@ impl VppSh<'_> {
                 modifiers: KeyModifiers::NONE,
             }) => {
                 set_translator!(self.ru.clone());
-                clear_terminal()?;
-                print_header();
+                self.tui_term_clear()?;
+                self.draw();
             }
 
             Event::Key(KeyEvent {
@@ -339,7 +332,7 @@ pub fn print_header() {
     println!("\n{}\r", tr!("More comands under constuction"));
 }
 
-fn clear_terminal() -> io::Result<()> {
+pub fn clear_terminal() -> io::Result<()> {
     execute!(std::io::stdout(), terminal::Clear(terminal::ClearType::All))?;
     execute!(std::io::stdout(), cursor::MoveTo(0, 0))?;
     Ok(())

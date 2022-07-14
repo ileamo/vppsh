@@ -14,6 +14,7 @@ extern crate tr;
 struct CleanUp;
 impl Drop for CleanUp {
     fn drop(&mut self) {
+        // vppsh::clear_terminal().expect("Unable to clear terminal");
         terminal::disable_raw_mode().expect("Unable to disable raw mode")
     }
 }
@@ -122,5 +123,6 @@ async fn main() -> io::Result<()> {
             }
         }
     }
+    vppsh::clear_terminal().expect("Unable to clear terminal");
     Ok(())
 }

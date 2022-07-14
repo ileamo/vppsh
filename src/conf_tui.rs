@@ -57,7 +57,7 @@ fn draw_hist<'a>(history: &'a History) -> List<'a> {
     List::new(items)
         .block(
             Block::default()
-                .title("History")
+                .title(tr!("History"))
                 .borders(Borders::ALL)
                 .style(Style::default().fg(Color::White))
                 .border_type(border_type),
@@ -85,7 +85,7 @@ fn draw_conf<'a>(history: &'a History) -> List<'a> {
         .collect();
     let mut list = List::new(items).block(
         Block::default()
-            .title("Configuration")
+            .title(tr!("Configuration"))
             .borders(Borders::ALL)
             .style(Style::default().fg(Color::White))
             .border_type(border_type),
