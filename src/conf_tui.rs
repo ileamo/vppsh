@@ -1,16 +1,17 @@
 use tui::backend::Backend;
 use tui::backend::CrosstermBackend;
-use tui::layout::{Alignment, Constraint, Direction, Layout};
+use tui::layout::{Constraint, Direction, Layout};
 use tui::style::Modifier;
 use tui::style::{Color, Style};
 use tui::text::{Span, Spans};
 use tui::widgets::List;
 use tui::widgets::ListItem;
 use tui::widgets::ListState;
-use tui::widgets::{Block, BorderType, Borders, Paragraph};
+use tui::widgets::{Block, BorderType, Borders};
 use tui::Frame;
 use tui::Terminal;
 
+use crate::history::ActiveWidget;
 use crate::history::History;
 
 pub fn draw(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>, history: &mut History) {
@@ -30,18 +31,26 @@ where
         .split(size);
 
     let mut list_state = ListState::default();
-    list_state.select(Some(history.get_selected()));
+    list_state.select(Some(history.get_hist_selected()));
 
-    let history_widget = draw_history(history);
+    let history_widget = draw_hist(history);
     rect.render_stateful_widget(history_widget, body_chunks[0], &mut list_state);
 
+    list_state.select(Some(history.get_conf_selected()));
     let conf_widget = draw_conf(history);
-    rect.render_widget(conf_widget, body_chunks[1]);
+    rect.render_stateful_widget(conf_widget, body_chunks[1], &mut list_state);
 }
 
-fn draw_history<'a>(history: &'a History) -> List<'a> {
+fn draw_hist<'a>(history: &'a History) -> List<'a> {
+    let mut border_type = BorderType::Plain;
+    let mut hl_bg = Color::DarkGray;
+    if let ActiveWidget::Hist = history.get_active_widget() {
+        border_type = BorderType::Thick;
+        hl_bg = Color::LightBlue;
+    };
+
     let items: Vec<_> = history
-        .list
+        .hist
         .iter()
         .map(|cmd| ListItem::new(Spans::from(vec![Span::styled(cmd, Style::default())])))
         .collect();
@@ -51,25 +60,44 @@ fn draw_history<'a>(history: &'a History) -> List<'a> {
                 .title("History")
                 .borders(Borders::ALL)
                 .style(Style::default().fg(Color::White))
-                .border_type(BorderType::Plain),
+                .border_type(border_type),
         )
         .highlight_style(
             Style::default()
-                .bg(Color::Yellow)
+                .bg(hl_bg)
                 .fg(Color::Black)
                 .add_modifier(Modifier::BOLD),
         )
 }
 
-fn draw_conf<'a>(_history: &'a History) -> Paragraph<'a> {
-    Paragraph::new(vec![Spans::from(Span::raw("text"))])
-        .style(Style::default().fg(Color::LightCyan))
-        .alignment(Alignment::Left)
-        .block(
-            Block::default()
-                .title("Configuration")
-                .borders(Borders::ALL)
-                .style(Style::default().fg(Color::White))
-                .border_type(BorderType::Plain),
+fn draw_conf<'a>(history: &'a History) -> List<'a> {
+    let mut border_type = BorderType::Plain;
+    let mut active = false;
+    if let ActiveWidget::Conf = history.get_active_widget() {
+        border_type = BorderType::Thick;
+        active = true;
+    };
+
+    let items: Vec<_> = history
+        .conf
+        .iter()
+        .map(|cmd| ListItem::new(Spans::from(vec![Span::styled(cmd, Style::default())])))
+        .collect();
+    let mut list = List::new(items).block(
+        Block::default()
+            .title("Configuration")
+            .borders(Borders::ALL)
+            .style(Style::default().fg(Color::White))
+            .border_type(border_type),
+    );
+
+    if active {
+        list = list.highlight_style(
+            Style::default()
+                .bg(Color::LightBlue)
+                .fg(Color::Black)
+                .add_modifier(Modifier::BOLD),
         )
+    };
+    list
 }

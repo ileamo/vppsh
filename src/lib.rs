@@ -167,21 +167,20 @@ impl VppSh<'_> {
             }
 
             Event::Key(KeyEvent {
-                code: KeyCode::Char('c'),
+                code: KeyCode::Char('t'),
                 modifiers: KeyModifiers::NONE,
             }) => {
                 self.tui_term_clear()?;
                 self.draw();
             }
 
-            Event::Key(KeyEvent {
-                code: KeyCode::Char('x'),
-                modifiers: KeyModifiers::NONE,
-            }) => {
-                clear_terminal()?;
-                print_header();
-            }
-
+            // Event::Key(KeyEvent {
+            //     code: KeyCode::Char('x'),
+            //     modifiers: KeyModifiers::NONE,
+            // }) => {
+            //     clear_terminal()?;
+            //     print_header();
+            // }
             Event::Key(KeyEvent {
                 code: KeyCode::Char('e'),
                 modifiers: KeyModifiers::NONE,
@@ -198,6 +197,22 @@ impl VppSh<'_> {
                 set_translator!(self.ru.clone());
                 clear_terminal()?;
                 print_header();
+            }
+
+            Event::Key(KeyEvent {
+                code: KeyCode::Tab,
+                modifiers: KeyModifiers::NONE,
+            }) => {
+                self.history.toggle_active_widget();
+                self.draw();
+            }
+
+            Event::Key(KeyEvent {
+                code: KeyCode::Right,
+                modifiers: KeyModifiers::NONE,
+            }) => {
+                self.history.copy();
+                self.draw();
             }
 
             Event::Key(KeyEvent {
