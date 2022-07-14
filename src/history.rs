@@ -3,23 +3,46 @@ const VPP_PREFIX: &[u8] = "vpp# ".as_bytes();
 const VPP_PREFIX_LEN: usize = VPP_PREFIX.len();
 
 pub struct History {
-    pub history: Vec<String>,
+    pub list: Vec<String>,
+    pub conf: Vec<String>,
     curr_command: [u8; CURR_COMMAND_LEN],
     curr_command_ptr: usize,
     curr_command_len: usize,
     vpp_prefix: bool,
     was_enter: bool,
+    selected: usize,
+    conf_selected: usize,
+    active: 
 }
 
 impl History {
     pub fn new() -> History {
-        History { 
-            history: Vec::new(),
+        History {
+            list: Vec::new(),
+            conf: Vec::new(),
             curr_command: [0; CURR_COMMAND_LEN],
             curr_command_ptr: 0,
             curr_command_len: 0,
             vpp_prefix: true,
             was_enter: false,
+            selected: 0,
+            conf_selected: 0,
+        }
+    }
+
+    pub fn get_selected(&self) -> usize {
+        self.selected
+    }
+
+    pub fn down(&mut self) {
+        if self.list.len() > self.selected + 1 {
+            self.selected += 1;
+        }
+    }
+
+    pub fn up(&mut self) {
+        if self.selected > 0 {
+            self.selected -= 1;
         }
     }
 
@@ -39,7 +62,7 @@ impl History {
                     10 | 13 => {
                         if self.curr_command_len > VPP_PREFIX_LEN && self.was_enter {
                             let hist = &self.curr_command[VPP_PREFIX_LEN..self.curr_command_len];
-                            self.history.push(String::from_utf8_lossy(hist).to_string());
+                            self.list.push(String::from_utf8_lossy(hist).to_string());
                         }
                         self.curr_command_ptr = 0;
                         self.curr_command_len = 0;

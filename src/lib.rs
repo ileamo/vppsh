@@ -1,7 +1,6 @@
 mod conf_tui;
 mod history;
 
-use conf_tui::ConfTui;
 use crossterm::{
     cursor,
     event::{Event, EventStream, KeyCode, KeyEvent, KeyModifiers},
@@ -17,6 +16,7 @@ use tokio::{
         UnixStream,
     },
 };
+use tui::{backend::CrosstermBackend, Terminal};
 
 #[macro_use]
 extern crate tr;
@@ -44,7 +44,7 @@ pub struct VppSh<'a> {
     ru: Catalog,
     en: Catalog,
     history: History,
-    conf_tui: ConfTui,
+    tui_term: Terminal<CrosstermBackend<std::io::Stdout>>,
 }
 
 impl VppSh<'_> {
@@ -53,6 +53,8 @@ impl VppSh<'_> {
             .await
             .expect(&tr!("Could not connect vpp ctl socket"));
         let (rd, wr) = stream.into_split();
+        let backend = CrosstermBackend::new(std::io::stdout());
+        let tui_term = Terminal::new(backend).unwrap();
 
         VppSh {
             socket_name: socket_name,
@@ -66,7 +68,7 @@ impl VppSh<'_> {
             ru,
             en,
             history: History::new(),
-            conf_tui: ConfTui::new(),
+            tui_term,
         }
     }
 
@@ -129,12 +131,28 @@ impl VppSh<'_> {
         Ok(())
     }
 
+    fn draw(&mut self) {
+        conf_tui::draw(&mut self.tui_term, &mut self.history);
+    }
+
+    fn tui_term_clear(&mut self) -> io::Result<()> {
+        self.tui_term.clear()?;
+        self.tui_term.hide_cursor()?;
+        Ok(())
+    }
+
+    fn tui_term_exit(&mut self) -> io::Result<()> {
+        self.tui_term.show_cursor()?;
+        Ok(())
+    }
+
     pub async fn sh_handle(&mut self, event: Event) -> io::Result<Loop> {
         match event {
             Event::Key(KeyEvent {
                 code: KeyCode::Char('i'),
                 modifiers: KeyModifiers::NONE,
             }) => {
+                self.tui_term_exit()?;
                 clear_terminal()?;
                 self.term_wr(format!("{}\n\r", tr!("Enter vppctl interactive mode")).as_bytes())
                     .await?;
@@ -144,12 +162,16 @@ impl VppSh<'_> {
                 self.wr.write_all(b"\n").await?;
             }
 
+            Event::Resize(_, _) => {
+                self.draw();
+            }
+
             Event::Key(KeyEvent {
                 code: KeyCode::Char('c'),
                 modifiers: KeyModifiers::NONE,
-            })
-            | Event::Resize(_, _) => {
-                self.conf_tui.draw(&self.history.history);
+            }) => {
+                self.tui_term_clear()?;
+                self.draw();
             }
 
             Event::Key(KeyEvent {
@@ -179,11 +201,28 @@ impl VppSh<'_> {
             }
 
             Event::Key(KeyEvent {
+                code: KeyCode::Down,
+                modifiers: KeyModifiers::NONE,
+            }) => {
+                self.history.down();
+                self.draw();
+            }
+
+            Event::Key(KeyEvent {
+                code: KeyCode::Up,
+                modifiers: KeyModifiers::NONE,
+            }) => {
+                self.history.up();
+                self.draw();
+            }
+
+            Event::Key(KeyEvent {
                 code: KeyCode::Char('q'),
                 modifiers: KeyModifiers::NONE,
             }) => return Ok(Loop::Break),
-            _evt => {
-                // println!("vppsh: {:?}\r", evt);
+
+            evt => {
+                println!("vppsh: {:?}\r", evt);
             }
         }
 
@@ -192,8 +231,8 @@ impl VppSh<'_> {
 
     pub async fn quit_vppctl(&mut self) -> io::Result<()> {
         self.vppctl = false;
-        clear_terminal()?;
-        print_header();
+        self.tui_term_clear()?;
+        self.draw();
         Ok(())
     }
 

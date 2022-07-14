@@ -11,25 +11,13 @@ use tui::widgets::{Block, BorderType, Borders, Paragraph};
 use tui::Frame;
 use tui::Terminal;
 
-pub struct ConfTui {
-    terminal: Terminal<CrosstermBackend<std::io::Stdout>>,
+use crate::history::History;
+
+pub fn draw(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>, history: &mut History) {
+    terminal.draw(|rect| ui_draw(rect, history)).unwrap();
 }
 
-impl ConfTui {
-    pub fn new() -> ConfTui {
-        let backend = CrosstermBackend::new(std::io::stdout());
-        let terminal = Terminal::new(backend).unwrap();
-        ConfTui { terminal }
-    }
-
-    pub fn draw(&mut self, history: &Vec<String>) {
-        self.terminal.clear().unwrap();
-        self.terminal.hide_cursor().unwrap();
-        self.terminal.draw(|rect| ui_draw(rect, history)).unwrap();
-    }
-}
-
-fn ui_draw<B>(rect: &mut Frame<B>, history: &Vec<String>)
+fn ui_draw<B>(rect: &mut Frame<B>, history: &History)
 where
     B: Backend,
 {
@@ -41,18 +29,19 @@ where
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
         .split(size);
 
-    let mut pet_list_state = ListState::default();
-    pet_list_state.select(Some(0));
+    let mut list_state = ListState::default();
+    list_state.select(Some(history.get_selected()));
 
-    let history = draw_history(history);
-    rect.render_stateful_widget(history, body_chunks[0], &mut pet_list_state);
+    let history_widget = draw_history(history);
+    rect.render_stateful_widget(history_widget, body_chunks[0], &mut list_state);
 
-    let help = draw_conf();
-    rect.render_widget(help, body_chunks[1]);
+    let conf_widget = draw_conf(history);
+    rect.render_widget(conf_widget, body_chunks[1]);
 }
 
-fn draw_history<'a>(history: &'a Vec<String>) -> List<'a> {
+fn draw_history<'a>(history: &'a History) -> List<'a> {
     let items: Vec<_> = history
+        .list
         .iter()
         .map(|cmd| ListItem::new(Spans::from(vec![Span::styled(cmd, Style::default())])))
         .collect();
@@ -72,7 +61,7 @@ fn draw_history<'a>(history: &'a Vec<String>) -> List<'a> {
         )
 }
 
-fn draw_conf<'a>() -> Paragraph<'a> {
+fn draw_conf<'a>(_history: &'a History) -> Paragraph<'a> {
     Paragraph::new(vec![Spans::from(Span::raw("text"))])
         .style(Style::default().fg(Color::LightCyan))
         .alignment(Alignment::Left)
