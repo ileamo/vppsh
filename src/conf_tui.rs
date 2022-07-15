@@ -24,11 +24,23 @@ where
 {
     let size = rect.size();
 
-    // Body & Help
+    let chunks = Layout::default()
+    .direction(Direction::Vertical)
+    .margin(2)
+    .constraints(
+        [
+            Constraint::Min(4),
+            Constraint::Length(1),
+        ]
+        .as_ref(),
+    )
+    .split(size);
+
+
     let body_chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
-        .split(size);
+        .split(chunks[0]);
 
     let mut list_state = ListState::default();
     list_state.select(Some(history.get_hist_selected()));
@@ -42,10 +54,10 @@ where
 }
 
 fn draw_hist<'a>(history: &'a History) -> List<'a> {
-    let mut border_type = BorderType::Plain;
+    let mut border_modifier = Modifier::DIM;
     let mut hl_bg = Color::DarkGray;
     if let ActiveWidget::Hist = history.get_active_widget() {
-        border_type = BorderType::Thick;
+        border_modifier = Modifier::empty();
         hl_bg = Color::LightBlue;
     };
 
@@ -60,7 +72,8 @@ fn draw_hist<'a>(history: &'a History) -> List<'a> {
                 .title(tr!("History"))
                 .borders(Borders::ALL)
                 .style(Style::default().fg(Color::White))
-                .border_type(border_type),
+                .border_type(BorderType::Plain)
+                .border_style(Style::default().add_modifier(border_modifier)),
         )
         .highlight_style(
             Style::default()
@@ -71,10 +84,10 @@ fn draw_hist<'a>(history: &'a History) -> List<'a> {
 }
 
 fn draw_conf<'a>(history: &'a History) -> List<'a> {
-    let mut border_type = BorderType::Plain;
+    let mut border_modifier = Modifier::DIM;
     let mut active = false;
     if let ActiveWidget::Conf = history.get_active_widget() {
-        border_type = BorderType::Thick;
+        border_modifier = Modifier::empty();
         active = true;
     };
 
@@ -88,7 +101,8 @@ fn draw_conf<'a>(history: &'a History) -> List<'a> {
             .title(tr!("Configuration"))
             .borders(Borders::ALL)
             .style(Style::default().fg(Color::White))
-            .border_type(border_type),
+            .border_type(BorderType::Plain)
+            .border_style(Style::default().add_modifier(border_modifier)),
     );
 
     if active {
