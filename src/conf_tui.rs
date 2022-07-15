@@ -1,12 +1,15 @@
 use tui::backend::Backend;
 use tui::backend::CrosstermBackend;
+use tui::layout::Alignment;
 use tui::layout::{Constraint, Direction, Layout};
 use tui::style::Modifier;
 use tui::style::{Color, Style};
-use tui::text::{Span, Spans};
+use tui::text::Span;
+use tui::text::Spans;
 use tui::widgets::List;
 use tui::widgets::ListItem;
 use tui::widgets::ListState;
+use tui::widgets::Paragraph;
 use tui::widgets::{Block, BorderType, Borders};
 use tui::Frame;
 use tui::Terminal;
@@ -25,17 +28,9 @@ where
     let size = rect.size();
 
     let chunks = Layout::default()
-    .direction(Direction::Vertical)
-    .margin(2)
-    .constraints(
-        [
-            Constraint::Min(4),
-            Constraint::Length(1),
-        ]
-        .as_ref(),
-    )
-    .split(size);
-
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Min(4), Constraint::Length(1)].as_ref())
+        .split(size);
 
     let body_chunks = Layout::default()
         .direction(Direction::Horizontal)
@@ -51,6 +46,9 @@ where
     list_state.select(Some(history.get_conf_selected()));
     let conf_widget = draw_conf(history);
     rect.render_stateful_widget(conf_widget, body_chunks[1], &mut list_state);
+
+    let help_widget = draw_help();
+    rect.render_widget(help_widget, chunks[1]);
 }
 
 fn draw_hist<'a>(history: &'a History) -> List<'a> {
@@ -114,4 +112,22 @@ fn draw_conf<'a>(history: &'a History) -> List<'a> {
         )
     };
     list
+}
+
+fn draw_help<'a>() -> Paragraph<'a> {
+    let style = Style::default().bg(Color::LightBlue).fg(Color::Black);
+    let help_text = Spans::from(vec![
+        Span::styled("Home [h]", style),
+        Span::raw(" "),
+        Span::styled("vppctl [i]", style),
+        Span::raw(" "),
+        Span::styled("Copy [\u{2192}]", style),
+        Span::raw(" "),
+        Span::styled("Toggle [TAB]", style),
+        Span::raw(" "),
+        Span::styled("Scroll [\u{2191}\u{2193}]", style),
+        Span::raw(" "),
+        Span::styled("Quit [q]", style),
+    ]);
+    Paragraph::new(help_text).alignment(Alignment::Left)
 }
