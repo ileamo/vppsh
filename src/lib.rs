@@ -225,6 +225,46 @@ impl VppSh<'_> {
             }
 
             Event::Key(KeyEvent {
+                code: KeyCode::Up,
+                modifiers: KeyModifiers::ALT,
+            }) => {
+                self.history.move_up();
+                self.draw();
+            }
+
+            Event::Key(KeyEvent {
+                code: KeyCode::Down,
+                modifiers: KeyModifiers::ALT,
+            }) => {
+                self.history.move_down();
+                self.draw();
+            }
+
+            Event::Key(KeyEvent {
+                code: KeyCode::Delete,
+                modifiers: KeyModifiers::NONE,
+            }) => {
+                self.history.delete();
+                self.draw();
+            }
+
+            Event::Key(KeyEvent {
+                code: KeyCode::Char('u'),
+                modifiers: KeyModifiers::CONTROL,
+            }) => {
+                self.history.undelete();
+                self.draw();
+            }
+
+            Event::Key(KeyEvent {
+                code: KeyCode::Char('h'),
+                modifiers: KeyModifiers::NONE,
+            }) => {
+                clear_terminal()?;
+                print_header();
+            }
+
+            Event::Key(KeyEvent {
                 code: KeyCode::Char('q'),
                 modifiers: KeyModifiers::NONE,
             }) => return Ok(Loop::Break),

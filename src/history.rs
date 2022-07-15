@@ -10,6 +10,7 @@ pub enum ActiveWidget {
 pub struct History {
     pub hist: Vec<String>,
     pub conf: Vec<String>,
+    deleted: Vec<String>,
     curr_command: [u8; CURR_COMMAND_LEN],
     curr_command_ptr: usize,
     curr_command_len: usize,
@@ -25,6 +26,7 @@ impl History {
         History {
             hist: Vec::new(),
             conf: Vec::new(),
+            deleted: Vec::new(),
             curr_command: [0; CURR_COMMAND_LEN],
             curr_command_ptr: 0,
             curr_command_len: 0,
@@ -57,38 +59,91 @@ impl History {
 
     pub fn down(&mut self) {
         match self.active_widget {
-            ActiveWidget::Hist => {
-                if self.hist.len() > self.hist_selected + 1 {
-                    self.hist_selected += 1;
-                }
-            }
-            ActiveWidget::Conf => {
-                if self.conf.len() > self.conf_selected + 1 {
-                    self.conf_selected += 1;
-                }
-            }
+            ActiveWidget::Hist => Self::down_(&mut self.hist_selected, self.hist.len()),
+            ActiveWidget::Conf => Self::down_(&mut self.conf_selected, self.conf.len()),
+        }
+    }
+
+    fn down_(selected: &mut usize, len: usize) {
+        if len > *selected + 1 {
+            *selected += 1;
         }
     }
 
     pub fn up(&mut self) {
         match self.active_widget {
+            ActiveWidget::Hist => Self::up_(&mut self.hist_selected),
+            ActiveWidget::Conf => Self::up_(&mut self.conf_selected),
+        }
+    }
+
+    fn up_(selected: &mut usize) {
+        if *selected > 0 {
+            *selected -= 1;
+        }
+    }
+
+    pub fn move_up(&mut self) {
+        match self.active_widget {
+            ActiveWidget::Hist => Self::move_up_(&mut self.hist, &mut self.hist_selected),
+            ActiveWidget::Conf => Self::move_up_(&mut self.conf, &mut self.conf_selected),
+        }
+    }
+
+    fn move_up_(list: &mut Vec<String>, selected: &mut usize) {
+        if *selected > 0 {
+            list.swap(*selected, *selected - 1);
+            *selected -= 1;
+        }
+    }
+
+    pub fn move_down(&mut self) {
+        match self.active_widget {
+            ActiveWidget::Hist => Self::move_down_(&mut self.hist, &mut self.hist_selected),
+            ActiveWidget::Conf => Self::move_down_(&mut self.conf, &mut self.conf_selected),
+        }
+    }
+
+    fn move_down_(list: &mut Vec<String>, selected: &mut usize) {
+        if *selected < list.len() - 1 {
+            list.swap(*selected, *selected + 1);
+            *selected += 1;
+        }
+    }
+
+    pub fn delete(&mut self) {
+        match self.active_widget {
             ActiveWidget::Hist => {
-                if self.hist_selected > 0 {
-                    self.hist_selected -= 1;
-                }
+                Self::delete_(&mut self.hist, &mut self.hist_selected, &mut self.deleted)
             }
             ActiveWidget::Conf => {
-                if self.conf_selected > 0 {
-                    self.conf_selected -= 1;
-                }
+                Self::delete_(&mut self.conf, &mut self.conf_selected, &mut self.deleted)
             }
+        }
+    }
+
+    fn delete_(list: &mut Vec<String>, selected: &mut usize, deleted: &mut Vec<String>) {
+        if list.len() > 0 {
+            let el = list.remove(*selected);
+            deleted.push(el);
+        }
+    }
+    
+    pub fn undelete(&mut self) {
+        let res = self.deleted.pop();
+        if let Some(el) = res {
+            self.hist.push(el);
         }
     }
 
     pub fn copy(&mut self) {
         let index = self.hist_selected;
         if index < self.hist.len() {
-            self.conf.push(self.hist[index].clone());
+            let com = self.hist[index].clone();
+            match self.active_widget {
+                ActiveWidget::Hist => self.conf.push(com),
+                ActiveWidget::Conf => self.conf.insert(self.conf_selected, com),
+            }
         }
     }
 
