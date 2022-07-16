@@ -32,6 +32,12 @@ pub enum Loop {
     Break,
 }
 
+pub enum Page {
+    Home,
+    Tui,
+    Vppctl,
+}
+
 pub struct VppSh<'a> {
     socket_name: &'a str,
     pub vppctl: bool,
@@ -45,6 +51,7 @@ pub struct VppSh<'a> {
     en: Catalog,
     history: History,
     tui_term: Terminal<CrosstermBackend<std::io::Stdout>>,
+    page: Page,
 }
 
 impl VppSh<'_> {
@@ -69,6 +76,7 @@ impl VppSh<'_> {
             en,
             history: History::new(),
             tui_term,
+            page: Page::Home,
         }
     }
 
@@ -131,6 +139,21 @@ impl VppSh<'_> {
         Ok(())
     }
 
+    fn draw_page(&mut self) -> io::Result<()> {
+        match self.page {
+            Page::Home => {
+                clear_terminal()?;
+                print_header();
+            }
+            Page::Tui => {
+                self.tui_term_clear()?;
+                self.draw();
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
     fn draw(&mut self) {
         conf_tui::draw(&mut self.tui_term, &mut self.history);
     }
@@ -152,6 +175,7 @@ impl VppSh<'_> {
                 code: KeyCode::Char('i'),
                 modifiers: KeyModifiers::NONE,
             }) => {
+                self.page = Page::Vppctl;
                 self.tui_term_exit()?;
                 clear_terminal()?;
                 self.term_wr(format!("{}\n\r", tr!("Enter vppctl interactive mode")).as_bytes())
@@ -167,9 +191,19 @@ impl VppSh<'_> {
             }
 
             Event::Key(KeyEvent {
-                code: KeyCode::Char('t'),
+                code: KeyCode::Char('h'),
                 modifiers: KeyModifiers::NONE,
             }) => {
+                self.page = Page::Home;
+                clear_terminal()?;
+                print_header();
+            }
+
+            Event::Key(KeyEvent {
+                code: KeyCode::Char('c'),
+                modifiers: KeyModifiers::NONE,
+            }) => {
+                self.page = Page::Tui; 
                 self.tui_term_clear()?;
                 self.draw();
             }
@@ -179,8 +213,7 @@ impl VppSh<'_> {
                 modifiers: KeyModifiers::NONE,
             }) => {
                 set_translator!(self.en.clone());
-                self.tui_term_clear()?;
-                self.draw();
+                self.draw_page()?;
             }
 
             Event::Key(KeyEvent {
@@ -188,8 +221,7 @@ impl VppSh<'_> {
                 modifiers: KeyModifiers::NONE,
             }) => {
                 set_translator!(self.ru.clone());
-                self.tui_term_clear()?;
-                self.draw();
+                self.draw_page()?;
             }
 
             Event::Key(KeyEvent {
@@ -257,11 +289,11 @@ impl VppSh<'_> {
             }
 
             Event::Key(KeyEvent {
-                code: KeyCode::Char('h'),
+                code: KeyCode::Char('s'),
                 modifiers: KeyModifiers::NONE,
             }) => {
-                clear_terminal()?;
-                print_header();
+                self.history.set_info_text("File saved".to_string());
+                self.draw();
             }
 
             Event::Key(KeyEvent {
@@ -296,9 +328,7 @@ impl VppSh<'_> {
                 self.quit_vppctl().await?;
             }
             Event::Key(KeyEvent {
-                code: KeyCode::Char(c),
-                modifiers: KeyModifiers::NONE,
-            }) => {
+                code: KeyCode::Char(c), .. }) => {
                 self.wr.write_all(&[c as u8]).await?;
             }
             Event::Key(KeyEvent {
@@ -365,7 +395,9 @@ pub fn print_header() {
     println!("{}\r", header);
     println!("{}\r\n", tr!("Wrapper around vppctl"));
     println!("{}\r\n", tr!("Commands"));
+    println!("h - {}\r", tr!("Home page"));
     println!("i - {}\r", tr!("Enter vppctl mode"));
+    println!("c - {}\r", tr!("Edit configuration"));
     println!("q - {}\r", tr!("Quit"));
     println!("e - {}\r", tr!("Set english locale"));
     println!("r - {}\r", tr!("Set russian locale"));

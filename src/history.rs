@@ -19,9 +19,10 @@ pub struct History {
     hist_selected: usize,
     conf_selected: usize,
     active_widget: ActiveWidget,
+    info: Option<String>,
 }
 
-impl History {
+impl  History {
     pub fn new() -> History {
         History {
             hist: Vec::new(),
@@ -35,7 +36,20 @@ impl History {
             hist_selected: 0,
             conf_selected: 0,
             active_widget: ActiveWidget::Hist,
+            info: None,
         }
+    }
+
+    pub fn get_info_text(&self) -> Option<&String> {
+        self.info.as_ref()
+    }
+
+    pub fn set_info_text(&mut self, text: String) {
+        self.info = Some(text);
+    }
+
+    pub fn clear_info_text(&mut self) {
+        self.info = None;
     }
 
     pub fn get_hist_selected(&self) -> usize {

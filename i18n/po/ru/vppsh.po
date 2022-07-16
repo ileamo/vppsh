@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vppsh 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-07-14 18:43+0000\n"
+"POT-Creation-Date: 2022-07-16 14:26+0000\n"
 "PO-Revision-Date: 2022-07-07 17:57+0300\n"
 "Last-Translator: Igor <imosunov@nsg.net.ru>\n"
 "Language-Team: Russian\n"
@@ -18,11 +18,11 @@ msgstr ""
 "Plural-Forms: nplurals=3; plural=((n%10==1 && n%100!=11) ? 0 : (n%10>=2 && n"
 "%10<=4 && (n%100<10 || n%100>=20)) ? 1 : 2);\n"
 
-#: src/conf_tui.rs:60
+#: src/conf_tui.rs:81
 msgid "History"
 msgstr "История команд"
 
-#: src/conf_tui.rs:88
+#: src/conf_tui.rs:110
 msgid "Configuration"
 msgstr "Файл конфигурации"
 
@@ -34,30 +34,38 @@ msgstr "Не могу подключиться к сокету vpp"
 msgid "Enter vppctl interactive mode"
 msgstr "Интерактивный режим vppctl. Для выхода нажмите ESC"
 
-#: src/lib.rs:324
+#: src/lib.rs:372
 msgid "Wrapper around vppctl"
 msgstr "Обертка для vppctl"
 
-#: src/lib.rs:325
+#: src/lib.rs:373
 msgid "Commands"
 msgstr "Команды"
 
-#: src/lib.rs:326
+#: src/lib.rs:374
+msgid "Home page"
+msgstr "Домашняя страница"
+
+#: src/lib.rs:375
 msgid "Enter vppctl mode"
 msgstr "Войти в интерактивный режим vppctl"
 
-#: src/lib.rs:327
+#: src/lib.rs:376
+msgid "Edit configuration"
+msgstr "Редактирование конфигурации"
+
+#: src/lib.rs:377
 msgid "Quit"
 msgstr "Выход"
 
-#: src/lib.rs:328
+#: src/lib.rs:378
 msgid "Set english locale"
 msgstr "Установить английскую локаль"
 
-#: src/lib.rs:329
+#: src/lib.rs:379
 msgid "Set russian locale"
 msgstr "Установить русскую локаль"
 
-#: src/lib.rs:330
+#: src/lib.rs:380
 msgid "More comands under constuction"
 msgstr "Остальные команды в процессе разработки"
